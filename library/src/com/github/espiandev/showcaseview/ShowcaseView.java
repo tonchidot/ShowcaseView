@@ -107,8 +107,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
     }
 
     private void init() {
-        boolean hasShot = getContext().getSharedPreferences(PREFS_SHOWCASE_INTERNAL, Context.MODE_PRIVATE)
-                .getBoolean("hasShot" + getConfigOptions().showcaseId, false);
+        boolean hasShot = hasShot(getContext(), getConfigOptions().showcaseId);
         if (hasShot && mOptions.shotType == TYPE_ONE_SHOT) {
             // The showcase has already been shot once, so we don't need to do anything
             setVisibility(View.GONE);
@@ -807,6 +806,10 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     public static ShowcaseView insertShowcaseView(float x, float y, Activity activity) {
         return insertShowcaseView(x, y, activity, null, null, null);
+    }
+
+    public static boolean hasShot(Context context, int showcaseId) {
+        return context.getSharedPreferences(PREFS_SHOWCASE_INTERNAL, Context.MODE_PRIVATE).getBoolean("hasShot" + showcaseId, false);
     }
 
     public static class ConfigOptions {
