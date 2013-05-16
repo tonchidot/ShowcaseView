@@ -1,10 +1,19 @@
+
 package com.github.espiandev.showcaseview;
+
+import java.lang.reflect.Field;
 
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.TypedArray;
-import android.graphics.*;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.text.DynamicLayout;
@@ -12,16 +21,18 @@ import android.text.Layout;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.util.AttributeSet;
-import android.view.*;
+import android.view.LayoutInflater;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
 import com.github.espiandev.showcaseview.anim.AnimationUtils;
-
-import java.lang.reflect.Field;
-
-import static com.github.espiandev.showcaseview.anim.AnimationUtils.AnimationEndListener;
-import static com.github.espiandev.showcaseview.anim.AnimationUtils.AnimationStartListener;
+import com.github.espiandev.showcaseview.anim.AnimationUtils.AnimationEndListener;
+import com.github.espiandev.showcaseview.anim.AnimationUtils.AnimationStartListener;
 
 /**
  * A view which allows you to showcase areas of your app with an explanation.
@@ -104,9 +115,13 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
             isRedundant = true;
             return;
         }
-        showcase = getContext().getResources().getDrawable(R.drawable.cling);
+        showcase = getContext().getResources().getDrawable(mOptions.circleDrawableId == 0 ? R.drawable.cling : mOptions.circleDrawableId);
 
-        showcaseRadius = metricScale * 94;
+        if (mOptions.radius != -1) {
+            showcaseRadius = metricScale * mOptions.radius;
+        } else {
+            showcaseRadius = metricScale * 94;
+        }
         PorterDuffXfermode mBlender = new PorterDuffXfermode(PorterDuff.Mode.MULTIPLY);
         setOnTouchListener(this);
 
@@ -137,7 +152,11 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
             lps.width = LayoutParams.WRAP_CONTENT;
             mEndButton.setLayoutParams(lps);
             mEndButton.setText(buttonText != null ? buttonText : getResources().getString(R.string.ok));
-            if (!hasCustomClickListener) mEndButton.setOnClickListener(this);
+            if (!hasCustomClickListener)
+                mEndButton.setOnClickListener(this);
+            if (mOptions.endButtonBackgroundId != 0) {
+                mEndButton.setBackgroundResource(mOptions.endButtonBackgroundId);
+            }
             addView(mEndButton);
         }
 
@@ -145,7 +164,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Set the view to showcase
-     *
+     * 
      * @param view The {@link View} to showcase.
      */
     public void setShowcaseView(final View view) {
@@ -175,7 +194,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Set a specific position to showcase
-     *
+     * 
      * @param x X co-ordinate
      * @param y Y co-ordinate
      */
@@ -301,7 +320,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Set the shot method of the showcase - only once or no limit
-     *
+     * 
      * @param shotType either TYPE_ONE_SHOT or TYPE_NO_LIMIT
      * @deprecated Use the option in {@link ConfigOptions} instead.
      */
@@ -313,9 +332,11 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
     }
 
     /**
-     * Decide whether touches outside the showcased circle should be ignored or not
-     *
-     * @param block true to block touches, false otherwise. By default, this is true.
+     * Decide whether touches outside the showcased circle should be ignored or
+     * not
+     * 
+     * @param block true to block touches, false otherwise. By default, this is
+     *            true.
      * @deprecated Use the option in {@link ConfigOptions} instead.
      */
     @Deprecated
@@ -325,7 +346,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Override the standard button click event
-     *
+     * 
      * @param listener Listener to listen to on click events
      */
     public void overrideButtonClick(OnClickListener listener) {
@@ -404,7 +425,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Calculates the best place to position text
-     *
+     * 
      * @param canvasW width of the screen
      * @param canvasH height of the screen
      * @return
@@ -418,14 +439,17 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
         //float spaceRight = canvasW - voidedArea.right;
 
         //TODO: currently only considers above or below showcase, deal with left or right
-        return new float[]{24 * metricScale, spaceTop > spaceBottom ? 128 * metricScale : 24 * metricScale + voidedArea.bottom, canvasW - 48 * metricScale};
+        return new float[] {
+                24 * metricScale, spaceTop > spaceBottom ? 128 * metricScale : 24 * metricScale + voidedArea.bottom, canvasW - 48 * metricScale
+        };
 
     }
 
     /**
-     * Creates a {@link Rect} which represents the area the showcase covers. Used to calculate
+     * Creates a {@link Rect} which represents the area the showcase covers.
+     * Used to calculate
      * where best to place the text
-     *
+     * 
      * @return true if voidedArea has changed, false otherwise.
      */
     private boolean makeVoidedRect() {
@@ -452,6 +476,9 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     public void animateGesture(float offsetStartX, float offsetStartY, float offsetEndX, float offsetEndY) {
         mHandy = ((LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.handy, null);
+        if (mOptions.handDrawableId != 0) {
+            ((ImageView) mHandy).setImageResource(mOptions.handDrawableId);
+        }
         addView(mHandy);
         moveHand(offsetStartX, offsetStartY, offsetEndX, offsetEndY, new AnimationEndListener() {
             @Override
@@ -534,7 +561,8 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
             return true;
         }
 
-        if (!mOptions.block) return false;
+        if (!mOptions.block)
+            return false;
 
         return distanceFromFocus > showcaseRadius;
 
@@ -576,7 +604,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Get the ghostly gesture hand for custom gestures
-     *
+     * 
      * @return a View representing the ghostly hand
      */
     public View getHand() {
@@ -589,7 +617,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Point to a specific view
-     *
+     * 
      * @param view The {@link View} to Showcase
      */
     public void pointTo(View view) {
@@ -600,7 +628,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Point to a specific point on the screen
-     *
+     * 
      * @param x X-coordinate to point to
      * @param y Y-coordinate to point to
      */
@@ -614,22 +642,23 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     private ConfigOptions getConfigOptions() {
         // Make sure that this method never returns null
-        if (mOptions == null) return mOptions = new ConfigOptions();
+        if (mOptions == null)
+            return mOptions = new ConfigOptions();
         return mOptions;
     }
 
     /**
      * Quick method to insert a ShowcaseView into an Activity
-     *
+     * 
      * @param viewToShowcase View to showcase
-     * @param activity       Activity to insert into
-     * @param title          Text to show as a title. Can be null.
-     * @param detailText     More detailed text. Can be null.
-     * @param options        A set of options to customise the ShowcaseView
+     * @param activity Activity to insert into
+     * @param title Text to show as a title. Can be null.
+     * @param detailText More detailed text. Can be null.
+     * @param options A set of options to customise the ShowcaseView
      * @return the created ShowcaseView instance
      */
     public static ShowcaseView insertShowcaseView(View viewToShowcase, Activity activity, String title,
-                                                  String detailText, ConfigOptions options) {
+            String detailText, ConfigOptions options) {
         ShowcaseView sv = new ShowcaseView(activity);
         if (options != null)
             sv.setConfigOptions(options);
@@ -645,16 +674,16 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Quick method to insert a ShowcaseView into an Activity
-     *
+     * 
      * @param viewToShowcase View to showcase
-     * @param activity       Activity to insert into
-     * @param title          Text to show as a title. Can be null.
-     * @param detailText     More detailed text. Can be null.
-     * @param options        A set of options to customise the ShowcaseView
+     * @param activity Activity to insert into
+     * @param title Text to show as a title. Can be null.
+     * @param detailText More detailed text. Can be null.
+     * @param options A set of options to customise the ShowcaseView
      * @return the created ShowcaseView instance
      */
     public static ShowcaseView insertShowcaseView(View viewToShowcase, Activity activity, int title,
-                                                  int detailText, ConfigOptions options) {
+            int detailText, ConfigOptions options) {
         ShowcaseView sv = new ShowcaseView(activity);
         if (options != null)
             sv.setConfigOptions(options);
@@ -669,7 +698,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
     }
 
     public static ShowcaseView insertShowcaseView(int showcaseViewId, Activity activity, String title,
-                                                  String detailText, ConfigOptions options) {
+            String detailText, ConfigOptions options) {
         View v = activity.findViewById(showcaseViewId);
         if (v != null) {
             return insertShowcaseView(v, activity, title, detailText, options);
@@ -678,7 +707,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
     }
 
     public static ShowcaseView insertShowcaseView(int showcaseViewId, Activity activity, int title,
-                                                  int detailText, ConfigOptions options) {
+            int detailText, ConfigOptions options) {
         View v = activity.findViewById(showcaseViewId);
         if (v != null) {
             return insertShowcaseView(v, activity, title, detailText, options);
@@ -687,7 +716,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
     }
 
     public static ShowcaseView insertShowcaseView(float x, float y, Activity activity, String title,
-                                                  String detailText, ConfigOptions options) {
+            String detailText, ConfigOptions options) {
         ShowcaseView sv = new ShowcaseView(activity);
         if (options != null)
             sv.setConfigOptions(options);
@@ -702,7 +731,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
     }
 
     public static ShowcaseView insertShowcaseView(float x, float y, Activity activity, int title,
-                                                  int detailText, ConfigOptions options) {
+            int detailText, ConfigOptions options) {
         ShowcaseView sv = new ShowcaseView(activity);
         if (options != null)
             sv.setConfigOptions(options);
@@ -722,13 +751,16 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Quickly insert a ShowcaseView into an Activity, highlighting an item.
-     *
-     * @param type       the type of item to showcase (can be ITEM_ACTION_HOME, ITEM_TITLE_OR_SPINNER, ITEM_ACTION_ITEM or ITEM_ACTION_OVERFLOW)
-     * @param itemId     the ID of an Action item to showcase (only required for ITEM_ACTION_ITEM
-     * @param activity   Activity to insert the ShowcaseView into
-     * @param title      Text to show as a title. Can be null.
+     * 
+     * @param type the type of item to showcase (can be ITEM_ACTION_HOME,
+     *            ITEM_TITLE_OR_SPINNER, ITEM_ACTION_ITEM or
+     *            ITEM_ACTION_OVERFLOW)
+     * @param itemId the ID of an Action item to showcase (only required for
+     *            ITEM_ACTION_ITEM
+     * @param activity Activity to insert the ShowcaseView into
+     * @param title Text to show as a title. Can be null.
      * @param detailText More detailed text. Can be null.
-     * @param options    A set of options to customise the ShowcaseView
+     * @param options A set of options to customise the ShowcaseView
      * @return the created ShowcaseView instance
      */
     public static ShowcaseView insertShowcaseViewWithType(int type, int itemId, Activity activity, String title, String detailText, ConfigOptions options) {
@@ -747,13 +779,16 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
 
     /**
      * Quickly insert a ShowcaseView into an Activity, highlighting an item.
-     *
-     * @param type       the type of item to showcase (can be ITEM_ACTION_HOME, ITEM_TITLE_OR_SPINNER, ITEM_ACTION_ITEM or ITEM_ACTION_OVERFLOW)
-     * @param itemId     the ID of an Action item to showcase (only required for ITEM_ACTION_ITEM
-     * @param activity   Activity to insert the ShowcaseView into
-     * @param title      Text to show as a title. Can be null.
+     * 
+     * @param type the type of item to showcase (can be ITEM_ACTION_HOME,
+     *            ITEM_TITLE_OR_SPINNER, ITEM_ACTION_ITEM or
+     *            ITEM_ACTION_OVERFLOW)
+     * @param itemId the ID of an Action item to showcase (only required for
+     *            ITEM_ACTION_ITEM
+     * @param activity Activity to insert the ShowcaseView into
+     * @param title Text to show as a title. Can be null.
      * @param detailText More detailed text. Can be null.
-     * @param options    A set of options to customise the ShowcaseView
+     * @param options A set of options to customise the ShowcaseView
      * @return the created ShowcaseView instance
      */
     public static ShowcaseView insertShowcaseViewWithType(int type, int itemId, Activity activity, int title, int detailText, ConfigOptions options) {
@@ -780,6 +815,10 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
         public int shotType = TYPE_NO_LIMIT;
         public int insert = INSERT_TO_DECOR;
         public boolean hideOnClickOutside = false;
+        public float radius = -1;
+        public int handDrawableId = 0;
+        public int circleDrawableId = 0;
+        public int endButtonBackgroundId = 0;
     }
 
 }
