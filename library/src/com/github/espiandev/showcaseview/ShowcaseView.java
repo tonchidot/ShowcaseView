@@ -140,6 +140,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
         mEraser.setColor(0xFFFFFF);
         mEraser.setAlpha(0);
         mEraser.setXfermode(mBlender);
+        mEraser.setAntiAlias(true);
 
         if (!mOptions.noButton && mEndButton.getParent() == null) {
             RelativeLayout.LayoutParams lps = (LayoutParams) generateDefaultLayoutParams();
@@ -368,9 +369,19 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
             super.dispatchDraw(canvas);
             return;
         }
-
-        Bitmap b = Bitmap.createBitmap(getMeasuredWidth(), getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+        Bitmap b;
+        float bitmapScale = 1.0f;
+        try {
+            b = Bitmap.createBitmap(getMeasuredWidth(), getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+        } catch (OutOfMemoryError e) {
+            // out of memory sometimes occurs on high-resolution devices. 
+            // Then, GC and scale down the target bitmap.
+            System.gc();
+            bitmapScale = 0.5f;
+            b = Bitmap.createBitmap((int) (getMeasuredWidth() * bitmapScale), (int) (getMeasuredHeight() * bitmapScale), Bitmap.Config.ARGB_8888);
+        }
         Canvas c = new Canvas(b);
+        c.scale(bitmapScale, bitmapScale);
 
         //Draw the semi-transparent background
         c.drawColor(backColor);
@@ -384,7 +395,7 @@ public class ShowcaseView extends RelativeLayout implements View.OnClickListener
         showcase.setBounds(voidedArea);
         showcase.draw(c);
 
-        canvas.drawBitmap(b, 0, 0, null);
+        canvas.drawBitmap(b, new Rect(0, 0, b.getWidth(), b.getHeight()), new Rect(0, 0, getMeasuredWidth(), getMeasuredHeight()), null);
 
         // Clean up, as we no longer require these items.
         try {
